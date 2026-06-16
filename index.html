@@ -1,19 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JLPT Vocabulary Fill Practice</title>
-  <style>
-    :root {
-      --bg: #f4f7fb;
-      --card: #ffffff;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --primary: #4f46e5;
-      --primary-dark: #3730a3;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --warning: #f59e0b;
-      --border: #e5e7eb;
-   
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>N1 接頭語 Trainer</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#eef2ff,#f8fafc);color:#172033}.wrap{max-width:1080px;margin:auto;padding:16px}header{display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;color:#3730a3}.sub{color:#667085}.card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;box-shadow:0 12px 30px #0f172a12;padding:18px;margin-top:14px}.toolbar,.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.toolbar{grid-template-columns:1fr 1fr 1fr}.stat{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}.stat span{display:block;color:#667085;font-size:13px}.stat b{font-size:22px}select,input,button{font:inherit}select,input{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:14px;background:#fff}button{border:0;border-radius:14px;padding:12px 14px;font-weight:800;cursor:pointer}.pri{background:#5856d6;color:white}.ghost{background:#f3f4f6}.badge{display:inline-block;background:#eef2ff;color:#3730a3;padding:7px 11px;border-radius:999px;font-weight:800;font-size:13px;margin-right:6px}.question{font-size:26px;line-height:1.65;background:#fafafa;border:1px dashed #c7d2fe;border-radius:18px;padding:20px;margin:16px 0}.blank{display:inline-block;min-width:140px;border-bottom:3px solid #5856d6;color:#5856d6;font-weight:900;text-align:center}.meaning{font-size:17px;color:#344054;margin-bottom:12px}.options{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}.option{text-align:left;background:#f8fafc;border:1px solid #e5e7eb}.option:hover{background:#eef2ff;border-color:#5856d6}.fb{display:none;margin-top:12px;padding:14px;border-radius:14px}.ok{display:block;background:#dcfce7;color:#166534}.bad{display:block;background:#fee2e2;color:#991b1b}.hint{display:block;background:#fef3c7;color:#92400e}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.small{font-size:13px;color:#667085}.hidden{display:none}.list{max-height:330px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px solid #e5e7eb;padding:9px;text-align:left}th{color:#667085}@media(max-width:760px){header{display:block}.toolbar,.stats,.options{grid-template-columns:1fr}.question{font-size:22px;padding:15px}}
+</style>
+</head>
+<body><div class="wrap">
+<header><div><h1>N1 接頭語 Trainer</h1><p class="sub">Luyện từ vựng từ file Word: điền từ + trắc nghiệm.</p></div><div class="card small">Dữ liệu: <b id="total">...</b></div></header>
+<div class="card toolbar"><select id="lesson"></select><select id="type"><option value="fill">Điền từ</option><option value="choice">Trắc nghiệm</option><option value="mix">Trộn cả hai</option></select><input id="search" placeholder="Tìm từ, nghĩa, câu ví dụ..."></div>
+<div class="stats"><div class="stat"><span>Câu</span><b id="pos">0</b></div><div class="stat"><span>Đúng</span><b id="ok">0</b></div><div class="stat"><span>Sai</span><b id="ng">0</b></div><div class="stat"><span>Điểm</span><b id="rate">0%</b></div></div>
+<main class="card"><div><span class="badge" id="lessonBadge"></span><span class="badge" id="modeBadge"></span></div><div class="question" id="q">Đang tải dữ liệu...</div><div class="meaning" id="meaning"></div><div id="fillBox"><input id="answer" placeholder="Nhập kanji hoặc hiragana..."><div class="row"><button class="pri" onclick="check()">Kiểm tra</button></div></div><div class="options hidden" id="options"></div><div class="fb" id="fb"></div><div class="row"><button class="ghost" onclick="showHint()">Gợi ý</button><button class="ghost" onclick="speak()">Nghe từ</button><button class="ghost" onclick="next()">Câu tiếp</button><button class="ghost" onclick="resetScore()">Làm lại điểm</button></div></main>
+<section class="card"><h2 style="margin-top:0">Danh sách từ</h2><div class="list"><table><thead><tr><th>Từ</th><th>Đọc</th><th>Nghĩa</th><th>Ví dụ</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+</div>
+<script>
+let WORDS=[],pool=[],idx=0,ok=0,ng=0,answered=false,mode='fill';
+const $=id=>document.getElementById(id), clean=s=>(s||'').trim().replace(/\s+/g,'');
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function hide(s,w){return (s||'').includes(w)?s.replace(w,'<span class="blank">____</span>'):'<span class="blank">____</span> '+s}
+async function load(){let txt=await fetch('data.tsv').then(r=>r.text());WORDS=txt.trim().split('\n').map(l=>{let [lesson,word,reading,meaning,sentence]=l.split('\t');return{lesson:+lesson,word,reading,meaning,sentence}});$('total').textContent=WORDS.length+' từ / '+new Set(WORDS.map(w=>w.lesson)).size+' bài';let ops=['<option value="all">Tất cả bài</option>'];[...new Set(WORDS.map(w=>w.lesson))].sort((a,b)=>a-b).forEach(n=>ops.push(`<option value="${n}">Bài ${n}</option>`));$('lesson').innerHTML=ops.join('');$('lesson').onchange=build;$('search').oninput=build;$('type').onchange=render;$('answer').addEventListener('keydown',e=>{if(e.key==='Enter')check()});build()}
+function build(){let l=$('lesson').value, s=clean($('search').value).toLowerCase();pool=WORDS.filter(w=>(l==='all'||String(w.lesson)===l)&&(!s||clean(w.word+w.reading+w.meaning+w.sentence).toLowerCase().includes(s)));shuffle(pool);idx=0;renderList();render()}
+function cur(){return pool[idx]}function pick(){let t=$('type').value;return t==='mix'?(Math.random()<.5?'fill':'choice'):t}
+function render(){let w=cur();answered=false;$('fb').className='fb';$('fb').innerHTML='';if(!w){$('q').textContent='Không có dữ liệu phù hợp.';return}mode=pick();$('pos').textContent=(idx+1)+' / '+pool.length;$('lessonBadge').textContent='Bài '+w.lesson;$('modeBadge').textContent=mode==='fill'?'Điền từ':'Trắc nghiệm';$('q').innerHTML=hide(w.sentence,w.word);$('meaning').innerHTML='Nghĩa: <b>'+w.meaning+'</b>';$('answer').value='';$('fillBox').classList.toggle('hidden',mode!=='fill');$('options').classList.toggle('hidden',mode!=='choice');if(mode==='choice')renderOptions();stats()}
+function renderOptions(){let w=cur(),opts=shuffle([w,...shuffle(WORDS.filter(x=>x.word!==w.word)).slice(0,3)]);$('options').innerHTML=opts.map(o=>`<button class="option" onclick="choose('${o.word}')"><b>${o.word}</b>（${o.reading}）<br><span class="small">${o.meaning}</span></button>`).join('')}
+function choose(a){$('answer').value=a;check()}function show(c,m){$('fb').className='fb '+c;$('fb').innerHTML=m}
+function check(){if(answered)return;let w=cur(),a=clean($('answer').value);if(!a){show('hint','Bạn chưa nhập đáp án.');return}answered=true;if(a===w.word||a===w.reading){ok++;show('ok','Đúng: <b>'+w.word+'</b>（'+w.reading+'）= '+w.meaning)}else{ng++;show('bad','Sai. Đáp án: <b>'+w.word+'</b>（'+w.reading+'）= '+w.meaning+'<br>Ví dụ: '+w.sentence)}stats()}
+function showHint(){let w=cur();show('hint','Gợi ý: đọc là <b>'+w.reading+'</b>, nghĩa là '+w.meaning)}function next(){if(!pool.length)return;idx=(idx+1)%pool.length;render()}function resetScore(){ok=0;ng=0;idx=0;shuffle(pool);render()}function stats(){let t=ok+ng;$('ok').textContent=ok;$('ng').textContent=ng;$('rate').textContent=t?Math.round(ok/t*100)+'%':'0%'}
+function speak(){let w=cur();if(!w||!speechSynthesis)return;let u=new SpeechSynthesisUtterance(w.word);u.lang='ja-JP';u.rate=.85;speechSynthesis.speak(u)}function renderList(){$('rows').innerHTML=pool.map(w=>`<tr><td><b>${w.word}</b></td><td>${w.reading}</td><td>${w.meaning}</td><td>${w.sentence}</td></tr>`).join('')}
+load();
+</script></body></html>
